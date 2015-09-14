@@ -362,68 +362,6 @@ char *hts_format_description(const htsFormat *format)
     return ks_release(&str);
 }
 
-htsFile *hts_open_format(const char *fn, const char *mode, const htsFormat *fmt)
-{
-    char smode[102], *cp, *cp2, *mode_c;
-    htsFile *fp = NULL;
-    hFILE *hfile;
-    char fmt_code = '\0';
-
-    strncpy(smode, mode, 100);
-    smode[100]=0;
-    if ((cp = strchr(smode, ',')))
-        *cp = '\0';
-
-    // Migrate format code (b or c) to the end of the smode buffer.
-    for (cp2 = cp = smode; *cp; cp++) {
-        if (*cp == 'b')
-            fmt_code = 'b';
-        else if (*cp == 'c')
-            fmt_code = 'c';
-        else
-            *cp2++ = *cp;
-    }
-    mode_c = cp2;
-    *cp2++ = fmt_code;
-    *cp2++ = 0;
-    *cp2++ = 0;
-
-    // Set or reset the format code if opts->format is used
-    if (fmt && fmt->format != unknown_format)
-        *mode_c = "\0g\0\0b\0c\0\0b\0g\0\0"[fmt->format];
-
-    hfile = hopen(fn, smode);
-    if (hfile == NULL) goto error;
-
-    fp = hts_hopen(hfile, fn, smode);
-    if (fp == NULL) goto error;
-
-//    if (fmt && fmt->specific)
-//        if (hts_opt_apply(fp, fmt->specific) != 0)
-//            goto error;
-
-    return fp;
-
-error:
-    if (hts_verbose >= 2)
-        fprintf(stderr, "[E::%s] fail to open file '%s'\n", __func__, fn);
-
-    if (hfile)
-        hclose_abruptly(hfile);
-
-    return NULL;
-}
-
-htsFile *hts_open(const char *fn, const char *mode) {
-    return hts_open_format(fn, mode, NULL);
-}
-
-/*
- * Parses arg and appends it to the option list.
- *
- * Returns 0 on success;
- *        -1 on failure.
- */
 int hts_opt_add(hts_opt **opts, const char *c_arg) {
     hts_opt *o, *t;
     char *val;
@@ -645,147 +583,28 @@ int hts_parse_format(htsFormat *format, const char *str) {
 }
 
 
-/*
- * Tokenise options as (key(=value)?,)*(key(=value)?)?
- * NB: No provision for ',' appearing in the value!
- * Add backslashing rules?
- *
- * This could be used as part of a general command line option parser or
- * as a string concatenated onto the file open mode.
- *
- * Returns 0 on success
-// *        -1 on failure.
-// */
-//static int hts_process_opts(htsFile *fp, const char *opts) {
-//    htsFormat fmt;
-//
-//    fmt.specific = NULL;
-//    if (hts_parse_opt_list(&fmt, opts) != 0)
-//        return -1;
-//
-//    if (hts_opt_apply(fp, fmt.specific) != 0) {
-//        hts_opt_free(fmt.specific);
-//        return -1;
-//    }
-//
-//    hts_opt_free(fmt.specific);
-//
-//    return 0;
-//}
-//
-//
+
 htsFile *hts_hopen(struct hFILE *hfile, const char *fn, const char *mode)
 {
-    htsFile *fp = (htsFile*)calloc(1, sizeof(htsFile));
+
+    htsFile *fp = (htsFile*) calloc(1, sizeof(htsFile));
+    if (fp == NULL) return NULL;
+
     char simple_mode[101], *cp, *opts;
     simple_mode[100] = '\0';
-
-    if (fp == NULL) goto error;
+    strncpy(simple_mode, mode, 100);
+    if (hts_detect_format(hfile, &fp->format) < 0) return NULL;
 
     fp->fn = strdup(fn);
     fp->is_be = ed_is_big();
+    fp->is_bin = 1;
 
-    // Split mode into simple_mode,opts strings
-    if ((cp = strchr(mode, ','))) {
-        strncpy(simple_mode, mode, cp-mode <= 100 ? cp-mode : 100);
-        simple_mode[cp-mode] = '\0';
-        opts = cp+1;
-    } else {
-        strncpy(simple_mode, mode, 100);
-        opts = NULL;
-    }
+    fp->fp.bgzf = bgzf_hopen(hfile, simple_mode);
 
-    if (strchr(simple_mode, 'r')) {
-        if (hts_detect_format(hfile, &fp->format) < 0) goto error;
-    }
-    else if (strchr(simple_mode, 'w') || strchr(simple_mode, 'a')) {
-        htsFormat *fmt = &fp->format;
-        fp->is_write = 1;
-
-        if (strchr(simple_mode, 'b')) fmt->format = binary_format;
-        else if (strchr(simple_mode, 'c')) fmt->format = cram;
-        else fmt->format = text_format;
-
-        if (strchr(simple_mode, 'z')) fmt->compression = bgzf;
-        else if (strchr(simple_mode, 'g')) fmt->compression = gzip;
-        else if (strchr(simple_mode, 'u')) fmt->compression = no_compression;
-        else {
-            // No compression mode specified, set to the default for the format
-            switch (fmt->format) {
-            case binary_format: fmt->compression = bgzf; break;
-            case cram: fmt->compression = custom; break;
-            case text_format: fmt->compression = no_compression; break;
-            default: abort();
-            }
-        }
-
-        // Fill in category (if determinable; e.g. 'b' could be BAM or BCF)
-        fmt->category = format_category(fmt->format);
-
-        fmt->version.major = fmt->version.minor = -1;
-        fmt->compression_level = -1;
-        fmt->specific = NULL;
-    }
-    else goto error;
-
-    switch (fp->format.format) {
-    case binary_format:
-    case bam:
-    case bcf:
-        fp->fp.bgzf = bgzf_hopen(hfile, simple_mode);
-        if (fp->fp.bgzf == NULL) goto error;
-        fp->is_bin = 1;
-        break;
-
-//    case cram:
-//        fp->fp.cram = cram_dopen(hfile, fn, simple_mode);
-//        if (fp->fp.cram == NULL) goto error;
-//        if (!fp->is_write)
-//            cram_set_option(fp->fp.cram, CRAM_OPT_DECODE_MD, 1);
-//        fp->is_cram = 1;
-//        break;
-
-    case text_format:
-    case sam:
-    case vcf:
-        if (!fp->is_write) {
-        #if KS_BGZF
-            BGZF *gzfp = bgzf_hopen(hfile, simple_mode);
-        #else
-            // TODO Implement gzip hFILE adaptor
-            hclose(hfile); // This won't work, especially for stdin
-            gzFile gzfp = strcmp(fn, "-")? gzopen(fn, "rb") : gzdopen(fileno(stdin), "rb");
-        #endif
-            if (gzfp) fp->fp.voidp = ks_init(gzfp);
-            else goto error;
-        }
-        else if (fp->format.compression != no_compression) {
-            fp->fp.bgzf = bgzf_hopen(hfile, simple_mode);
-            if (fp->fp.bgzf == NULL) goto error;
-        }
-        else
-            fp->fp.hfile = hfile;
-        break;
-
-    default:
-        goto error;
-    }
-
-//    if (opts)
-//        hts_process_opts(fp, opts);
+    if (fp->fp.bgzf == NULL) return NULL;
 
     return fp;
 
-error:
-    if (hts_verbose >= 2)
-        fprintf(stderr, "[E::%s] fail to open file '%s'\n", __func__, fn);
-
-    if (fp) {
-        free(fp->fn);
-        free(fp->fn_aux);
-        free(fp);
-    }
-    return NULL;
 }
 
 int hts_close(htsFile *fp)
