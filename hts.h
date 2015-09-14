@@ -323,7 +323,7 @@ htsFile *hts_open_format(const char *fn, const char *mode, const htsFormat *fmt)
   @param fn       The already-open file handle
   @param mode     Open mode, as per hts_open()
 */
-htsFile *hts_hopen(struct hFILE *fp, const char *fn, const char *mode);
+htsFile *hts_hopen(struct hFILE *fp, const char *fn);
 
 /*!
   @abstract  Close a file handle, flushing buffered data for output streams
