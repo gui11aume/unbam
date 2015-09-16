@@ -30,7 +30,6 @@ DEALINGS IN THE SOFTWARE.  */
 #include <inttypes.h>
 #include "sam.h"
 #include "hfile.h"
-#include "samtools.h"
 
 #ifndef bam_get_seq
 #define bam_get_seq(b)   ((b)->data + ((b)->core.n_cigar<<2) + (b)->core.l_qname)
@@ -46,11 +45,17 @@ int main_samview(int argc, char *argv[])
     samFile *in = hts_hopen(h, argv[1]);
     if (in == NULL) return 1;
 
-    if ((header = sam_hdr_read(in)) == 0) return 1;
+    if ((header = bam_hdr_read(in->fp.bgzf)) == 0) return 1;
 
     bam1_t *b = bam_init1();
     int r = 0;
-    while ((r = sam_read1(in, header, b)) >= 0) { // read one alignment from `in'
+    //while ((r = sam_read1(in, header, b)) >= 0) { // read one alignment from `in'
+    while ((r = bam_read1(in->fp.bgzf, b)) >= 0) {
+       if (r >= 0) { 
+          if (b->core.tid  >= header->n_targets || b->core.tid  < -1 ||
+             b->core.mtid >= header->n_targets || b->core.mtid < -1)
+             return NULL;
+       }
        // Process 'b' here.
        printf("%s\n", (char *) bam_get_seq(b));
     }

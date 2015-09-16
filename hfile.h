@@ -29,7 +29,49 @@ DEALINGS IN THE SOFTWARE.  */
 
 #include <sys/types.h>
 
-#include "hts_defs.h"
+#ifdef __clang__
+#ifdef __has_attribute
+#define HTS_COMPILER_HAS(attribute) __has_attribute(attribute)
+#endif
+
+#elif defined __GNUC__
+#define HTS_GCC_AT_LEAST(major, minor) \
+    (__GNUC__ > (major) || (__GNUC__ == (major) && __GNUC_MINOR__ >= (minor)))
+#endif
+
+#ifndef HTS_COMPILER_HAS
+#define HTS_COMPILER_HAS(attribute) 0
+#endif
+#ifndef HTS_GCC_AT_LEAST
+#define HTS_GCC_AT_LEAST(major, minor) 0
+#endif
+
+#if HTS_COMPILER_HAS(__noreturn__) || HTS_GCC_AT_LEAST(3,0)
+#define HTS_NORETURN __attribute__ ((__noreturn__))
+#else
+#define HTS_NORETURN
+#endif
+
+// GCC introduced warn_unused_result in 3.4 but added -Wno-unused-result later
+#if HTS_COMPILER_HAS(__warn_unused_result__) || HTS_GCC_AT_LEAST(4,5)
+#define HTS_RESULT_USED __attribute__ ((__warn_unused_result__))
+#else
+#define HTS_RESULT_USED
+#endif
+
+#if HTS_COMPILER_HAS(__unused__) || HTS_GCC_AT_LEAST(3,0)
+#define HTS_UNUSED __attribute__ ((__unused__))
+#else
+#define HTS_UNUSED
+#endif
+
+#if HTS_COMPILER_HAS(__deprecated__) || HTS_GCC_AT_LEAST(4,5)
+#define HTS_DEPRECATED(message) __attribute__ ((__deprecated__ (message)))
+#elif HTS_GCC_AT_LEAST(3,1)
+#define HTS_DEPRECATED(message) __attribute__ ((__deprecated__))
+#else
+#define HTS_DEPRECATED(message)
+#endif
 
 #ifdef __cplusplus
 extern "C" {
