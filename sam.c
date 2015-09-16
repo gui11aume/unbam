@@ -98,12 +98,11 @@ bam_hdr_t *bam_hdr_read(BGZF *fp)
     has_EOF = bgzf_check_EOF(fp);
     if (has_EOF < 0) {
         perror("[W::bam_hdr_read] bgzf_check_EOF");
-    } else if (has_EOF == 0 && hts_verbose >= 2)
+    } else if (has_EOF == 0)
         fprintf(stderr, "[W::%s] EOF marker is absent. The input is probably truncated.\n", __func__);
     // read "BAM1"
     magic_len = bgzf_read(fp, buf, 4);
     if (magic_len != 4 || strncmp(buf, "BAM\1", 4)) {
-        if (hts_verbose >= 1) fprintf(stderr, "[E::%s] invalid BAM binary header\n", __func__);
         return 0;
     }
     h = bam_hdr_init();
@@ -165,23 +164,12 @@ bam_hdr_t *bam_hdr_read(BGZF *fp)
     return h;
 
  nomem:
-    if (hts_verbose >= 1) fprintf(stderr, "[E::%s] out of memory\n", __func__);
     goto clean;
 
  read_err:
-    if (hts_verbose >= 1) {
-        if (bytes < 0) {
-            fprintf(stderr, "[E::%s] error reading BGZF stream\n", __func__);
-        } else {
-            fprintf(stderr, "[E::%s] truncated bam header\n", __func__);
-        }
-    }
     goto clean;
 
  invalid:
-    if (hts_verbose >= 1) {
-        fprintf(stderr, "[E::%s] invalid BAM binary header\n", __func__);
-    }
 
  clean:
     if (h != NULL) {

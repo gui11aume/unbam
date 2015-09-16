@@ -30,6 +30,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <inttypes.h>
 #include "sam.h"
 #include "hfile.h"
+#include "bgzf.h"
 
 #ifndef bam_get_seq
 #define bam_get_seq(b)   ((b)->data + ((b)->core.n_cigar<<2) + (b)->core.l_qname)
@@ -37,20 +38,14 @@ DEALINGS IN THE SOFTWARE.  */
 
 int main_samview(int argc, char *argv[])
 {
+
+    BGZF *in = bgzf_open(argv[1], "r");
     bam_hdr_t *header = NULL;
-
-    // Open the file for reading.
-    hFILE *h = hopen(argv[1], "r");
-    if (h == NULL) return 1;
-    samFile *in = hts_hopen(h, argv[1]);
-    if (in == NULL) return 1;
-
-    if ((header = bam_hdr_read(in->fp.bgzf)) == 0) return 1;
+    header = bam_hdr_read(in);
 
     bam1_t *b = bam_init1();
     int r = 0;
-    //while ((r = sam_read1(in, header, b)) >= 0) { // read one alignment from `in'
-    while ((r = bam_read1(in->fp.bgzf, b)) >= 0) {
+    while ((r = bam_read1(in, b)) >= 0) {
        if (r >= 0) { 
           if (b->core.tid  >= header->n_targets || b->core.tid  < -1 ||
              b->core.mtid >= header->n_targets || b->core.mtid < -1)
@@ -59,10 +54,9 @@ int main_samview(int argc, char *argv[])
        // Process 'b' here.
        printf("%s\n", (char *) bam_get_seq(b));
     }
-    bam_destroy1(b);
 
-    // close files, free and return
-    sam_close(in);
+    bam_destroy1(b);
+    bgzf_close(in);
     bam_hdr_destroy(header);
     return 0;
 }

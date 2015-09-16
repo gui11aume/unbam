@@ -167,27 +167,19 @@ static int mode2level(const char *__restrict mode)
 //    return fp;
 //}
 //
-//BGZF *bgzf_open(const char *path, const char *mode)
-//{
-//    BGZF *fp = 0;
-//    assert(compressBound(BGZF_BLOCK_SIZE) < BGZF_MAX_BLOCK_SIZE);
-//    if (strchr(mode, 'r')) {
-//        hFILE *fpr;
-//        if ((fpr = hopen(path, mode)) == 0) return 0;
-//        fp = bgzf_read_init(fpr);
-//        if (fp == 0) { hclose_abruptly(fpr); return NULL; }
-//        fp->fp = fpr;
-//    } else if (strchr(mode, 'w') || strchr(mode, 'a')) {
-//        hFILE *fpw;
-//        if ((fpw = hopen(path, mode)) == 0) return 0;
-//        fp = bgzf_write_init(mode);
-//        fp->fp = fpw;
-//    }
-//    else { errno = EINVAL; return 0; }
-//
-//    fp->is_be = ed_is_big();
-//    return fp;
-//}
+BGZF *bgzf_open(const char *path, const char *mode)
+{
+    BGZF *fp = 0;
+    assert(compressBound(BGZF_BLOCK_SIZE) < BGZF_MAX_BLOCK_SIZE);
+    hFILE *fpr;
+    if ((fpr = hopen(path, mode)) == 0) return 0;
+    fp = bgzf_read_init(fpr);
+    if (fp == 0) { hclose_abruptly(fpr); return NULL; }
+    fp->fp = fpr;
+
+    fp->is_be = ed_is_big();
+    return fp;
+}
 //
 //BGZF *bgzf_dopen(int fd, const char *mode)
 //{
