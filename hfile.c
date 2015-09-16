@@ -28,7 +28,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <errno.h>
 
 #include "hfile.h"
-#include "hfile_internal.h"
+//#include "hfile_internal.h"
 
 /* hFILE fields are used as follows:
 
