@@ -33,7 +33,7 @@
 #include <sys/types.h>
 #include <inttypes.h>
 
-#include "hts.h"
+//#include "hts.h"
 #include "bgzf.h"
 #include "hfile.h"
 

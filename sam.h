@@ -27,11 +27,7 @@ DEALINGS IN THE SOFTWARE.  */
 #define HTSLIB_SAM_H
 
 #include <stdint.h>
-#include "hts.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "bgzf.h"
 
 /**********************
  *** SAM/BAM header ***
@@ -54,7 +50,7 @@ typedef struct {
     int8_t *cigar_tab;
     char **target_name;
     char *text;
-    void *sdict;
+//    void *sdict;
 } bam_hdr_t;
 
 /****************************
@@ -255,20 +251,20 @@ typedef struct {
 
     bam_hdr_t *bam_hdr_init(void);
     bam_hdr_t *bam_hdr_read(BGZF *fp);
-    int bam_hdr_write(BGZF *fp, const bam_hdr_t *h);
+//    int bam_hdr_write(BGZF *fp, const bam_hdr_t *h);
     void bam_hdr_destroy(bam_hdr_t *h);
-    int bam_name2id(bam_hdr_t *h, const char *ref);
-    bam_hdr_t* bam_hdr_dup(const bam_hdr_t *h0);
+//    int bam_name2id(bam_hdr_t *h, const char *ref);
+//    bam_hdr_t* bam_hdr_dup(const bam_hdr_t *h0);
 
     bam1_t *bam_init1(void);
     void bam_destroy1(bam1_t *b);
     int bam_read1(BGZF *fp, bam1_t *b);
-    int bam_write1(BGZF *fp, const bam1_t *b);
-    bam1_t *bam_copy1(bam1_t *bdst, const bam1_t *bsrc);
-    bam1_t *bam_dup1(const bam1_t *bsrc);
+//    int bam_write1(BGZF *fp, const bam1_t *b);
+//    bam1_t *bam_copy1(bam1_t *bdst, const bam1_t *bsrc);
+//    bam1_t *bam_dup1(const bam1_t *bsrc);
 
-    int bam_cigar2qlen(int n_cigar, const uint32_t *cigar);
-    int bam_cigar2rlen(int n_cigar, const uint32_t *cigar);
+//    int bam_cigar2qlen(int n_cigar, const uint32_t *cigar);
+//    int bam_cigar2rlen(int n_cigar, const uint32_t *cigar);
 
     /*!
       @abstract Calculate the rightmost base position of an alignment on the
@@ -281,173 +277,10 @@ typedef struct {
       For an unmapped read (either according to its flags or if it has no cigar
       string), we return b->core.pos + 1 by convention.
     */
-    int32_t bam_endpos(const bam1_t *b);
+//    int32_t bam_endpos(const bam1_t *b);
 
-    int   bam_str2flag(const char *str);    /** returns negative value on error */
-    char *bam_flag2str(int flag);   /** The string must be freed by the user */
+//    int   bam_str2flag(const char *str);    /** returns negative value on error */
+//    char *bam_flag2str(int flag);   /** The string must be freed by the user */
 
-    /*************************
-     *** BAM/CRAM indexing ***
-     *************************/
-
-    // These BAM iterator functions work only on BAM files.  To work with either
-    // BAM or CRAM files use the sam_index_load() & sam_itr_*() functions.
-    #define bam_itr_destroy(iter) hts_itr_destroy(iter)
-    #define bam_itr_queryi(idx, tid, beg, end) sam_itr_queryi(idx, tid, beg, end)
-    #define bam_itr_querys(idx, hdr, region) sam_itr_querys(idx, hdr, region)
-    #define bam_itr_next(htsfp, itr, r) hts_itr_next((htsfp)->fp.bgzf, (itr), (r), 0)
-
-// Load/build .csi or .bai BAM index file.  Does not work with CRAM.
-// It is recommended to use the sam_index_* functions below instead.
-#define bam_index_load(fn) hts_idx_load((fn), HTS_FMT_BAI)
-#define bam_index_build(fn, min_shift) (sam_index_build((fn), (min_shift)))
-
-/// Load a BAM (.csi or .bai) or CRAM (.crai) index file
-/** @param fp  File handle of the data file whose index is being opened
-    @param fn  BAM/CRAM/etc filename to search alongside for the index file
-    @return  The index, or NULL if an error occurred.
-*/
-hts_idx_t *sam_index_load(htsFile *fp, const char *fn);
-
-/// Load a specific BAM (.csi or .bai) or CRAM (.crai) index file
-/** @param fp     File handle of the data file whose index is being opened
-    @param fn     BAM/CRAM/etc data file filename
-    @param fnidx  Index filename, or NULL to search alongside @a fn
-    @return  The index, or NULL if an error occurred.
-*/
-hts_idx_t *sam_index_load2(htsFile *fp, const char *fn, const char *fnidx);
-
-/// Generate and save an index file
-/** @param fn        Input BAM/etc filename, to which .csi/etc will be added
-    @param min_shift Positive to generate CSI, or 0 to generate BAI
-    @return  0 if successful, or negative if an error occurred.
-*/
-int sam_index_build(const char *fn, int min_shift);
-
-/// Generate and save an index to a specific file
-/** @param fn        Input BAM/CRAM/etc filename
-    @param fnidx     Output filename, or NULL to add .bai/.csi/etc to @a fn
-    @param min_shift Positive to generate CSI, or 0 to generate BAI
-    @return  0 if successful, or negative if an error occurred.
-*/
-int sam_index_build2(const char *fn, const char *fnidx, int min_shift);
-
-    #define sam_itr_destroy(iter) hts_itr_destroy(iter)
-    hts_itr_t *sam_itr_queryi(const hts_idx_t *idx, int tid, int beg, int end);
-    hts_itr_t *sam_itr_querys(const hts_idx_t *idx, bam_hdr_t *hdr, const char *region);
-    #define sam_itr_next(htsfp, itr, r) hts_itr_next((htsfp)->fp.bgzf, (itr), (r), (htsfp))
-
-    /***************
-     *** SAM I/O ***
-     ***************/
-
-    #define sam_open(fn, mode) (hts_open((fn), (mode)))
-    #define sam_open_format(fn, mode, fmt) (hts_open_format((fn), (mode), (fmt)))
-    #define sam_close(fp) hts_close(fp)
-
-    int sam_open_mode(char *mode, const char *fn, const char *format);
-
-    // A version of sam_open_mode that can handle ,key=value options.
-    // The format string is allocated and returned, to be freed by the caller.
-    // Prefix should be "r" or "w",
-    char *sam_open_mode_opts(const char *fn,
-                             const char *mode,
-                             const char *format);
-
-    typedef htsFile samFile;
-    bam_hdr_t *sam_hdr_parse(int l_text, const char *text);
-    bam_hdr_t *sam_hdr_read(samFile *fp);
-    int sam_hdr_write(samFile *fp, const bam_hdr_t *h);
-
-    int sam_parse1(kstring_t *s, bam_hdr_t *h, bam1_t *b);
-    int sam_format1(const bam_hdr_t *h, const bam1_t *b, kstring_t *str);
-    int sam_read1(samFile *fp, bam_hdr_t *h, bam1_t *b);
-    int sam_write1(samFile *fp, const bam_hdr_t *h, const bam1_t *b);
-
-    /*************************************
-     *** Manipulating auxiliary fields ***
-     *************************************/
-
-    uint8_t *bam_aux_get(const bam1_t *b, const char tag[2]);
-    int32_t bam_aux2i(const uint8_t *s);
-    double bam_aux2f(const uint8_t *s);
-    char bam_aux2A(const uint8_t *s);
-    char *bam_aux2Z(const uint8_t *s);
-
-    void bam_aux_append(bam1_t *b, const char tag[2], char type, int len, uint8_t *data);
-    int bam_aux_del(bam1_t *b, uint8_t *s);
-
-/**************************
- *** Pileup and Mpileup ***
- **************************/
-
-#if !defined(BAM_NO_PILEUP)
-
-/*! @typedef
- @abstract Structure for one alignment covering the pileup position.
- @field  b          pointer to the alignment
- @field  qpos       position of the read base at the pileup site, 0-based
- @field  indel      indel length; 0 for no indel, positive for ins and negative for del
- @field  level      the level of the read in the "viewer" mode
- @field  is_del     1 iff the base on the padded read is a deletion
- @field  is_head    ???
- @field  is_tail    ???
- @field  is_refskip ???
- @field  aux        ???
-
- @discussion See also bam_plbuf_push() and bam_lplbuf_push(). The
- difference between the two functions is that the former does not
- set bam_pileup1_t::level, while the later does. Level helps the
- implementation of alignment viewers, but calculating this has some
- overhead.
- */
-typedef struct {
-    bam1_t *b;
-    int32_t qpos;
-    int indel, level;
-    uint32_t is_del:1, is_head:1, is_tail:1, is_refskip:1, aux:28;
-} bam_pileup1_t;
-
-typedef int (*bam_plp_auto_f)(void *data, bam1_t *b);
-
-struct __bam_plp_t;
-typedef struct __bam_plp_t *bam_plp_t;
-
-struct __bam_mplp_t;
-typedef struct __bam_mplp_t *bam_mplp_t;
-
-    /**
-     *  bam_plp_init() - sets an iterator over multiple
-     *  @func:      see mplp_func in bam_plcmd.c in samtools for an example. Expected return
-     *              status: 0 on success, -1 on end, < -1 on non-recoverable errors
-     *  @data:      user data to pass to @func
-     */
-    bam_plp_t bam_plp_init(bam_plp_auto_f func, void *data);
-    void bam_plp_destroy(bam_plp_t iter);
-    int bam_plp_push(bam_plp_t iter, const bam1_t *b);
-    const bam_pileup1_t *bam_plp_next(bam_plp_t iter, int *_tid, int *_pos, int *_n_plp);
-    const bam_pileup1_t *bam_plp_auto(bam_plp_t iter, int *_tid, int *_pos, int *_n_plp);
-    void bam_plp_set_maxcnt(bam_plp_t iter, int maxcnt);
-    void bam_plp_reset(bam_plp_t iter);
-
-    bam_mplp_t bam_mplp_init(int n, bam_plp_auto_f func, void **data);
-    /**
-     *  bam_mplp_init_overlaps() - if called, mpileup will detect overlapping
-     *  read pairs and for each base pair set the base quality of the
-     *  lower-quality base to zero, thus effectively discarding it from
-     *  calling. If the two bases are identical, the quality of the other base
-     *  is increased to the sum of their qualities (capped at 200), otherwise
-     *  it is multiplied by 0.8.
-     */
-    void bam_mplp_init_overlaps(bam_mplp_t iter);
-    void bam_mplp_destroy(bam_mplp_t iter);
-    void bam_mplp_set_maxcnt(bam_mplp_t iter, int maxcnt);
-    int bam_mplp_auto(bam_mplp_t iter, int *_tid, int *_pos, int *n_plp, const bam_pileup1_t **plp);
-
-#endif // ~!defined(BAM_NO_PILEUP)
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

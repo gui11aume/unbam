@@ -30,17 +30,10 @@ DEALINGS IN THE SOFTWARE.  */
 #include <ctype.h>
 #include <zlib.h>
 #include "sam.h"
-#include "bgzf.h"
+//#include "bgzf.h"
 #include "hfile.h"
 
-#include "khash.h"
-KHASH_DECLARE(s2i, kh_cstr_t, int64_t)
 
-typedef khash_t(s2i) sdict_t;
-
-/**********************
- *** BAM header I/O ***
- **********************/
 
 bam_hdr_t *bam_hdr_init()
 {
@@ -58,33 +51,10 @@ void bam_hdr_destroy(bam_hdr_t *h)
         free(h->target_len);
     }
     free(h->text); free(h->cigar_tab);
-    if (h->sdict) kh_destroy(s2i, (sdict_t*)h->sdict);
+    //if (h->sdict) kh_destroy(s2i, (sdict_t*)h->sdict);
     free(h);
 }
 
-bam_hdr_t *bam_hdr_dup(const bam_hdr_t *h0)
-{
-    if (h0 == NULL) return NULL;
-    bam_hdr_t *h;
-    if ((h = bam_hdr_init()) == NULL) return NULL;
-    // copy the simple data
-    h->n_targets = h0->n_targets;
-    h->ignore_sam_err = h0->ignore_sam_err;
-    h->l_text = h0->l_text;
-    // Then the pointery stuff
-    h->cigar_tab = NULL;
-    h->sdict = NULL;
-    h->text = (char*)calloc(h->l_text + 1, 1);
-    memcpy(h->text, h0->text, h->l_text);
-    h->target_len = (uint32_t*)calloc(h->n_targets, sizeof(uint32_t));
-    h->target_name = (char**)calloc(h->n_targets, sizeof(char*));
-    int i;
-    for (i = 0; i < h->n_targets; ++i) {
-        h->target_len[i] = h0->target_len[i];
-        h->target_name[i] = strdup(h0->target_name[i]);
-    }
-    return h;
-}
 
 bam_hdr_t *bam_hdr_read(BGZF *fp)
 {
@@ -192,56 +162,6 @@ void bam_destroy1(bam1_t *b)
 {
     if (b == 0) return;
     free(b->data); free(b);
-}
-
-bam1_t *bam_copy1(bam1_t *bdst, const bam1_t *bsrc)
-{
-    uint8_t *data = bdst->data;
-    int m_data = bdst->m_data;   // backup data and m_data
-    if (m_data < bsrc->l_data) { // double the capacity
-        m_data = bsrc->l_data; kroundup32(m_data);
-        data = (uint8_t*)realloc(data, m_data);
-    }
-    memcpy(data, bsrc->data, bsrc->l_data); // copy var-len data
-    *bdst = *bsrc; // copy the rest
-    // restore the backup
-    bdst->m_data = m_data;
-    bdst->data = data;
-    return bdst;
-}
-
-bam1_t *bam_dup1(const bam1_t *bsrc)
-{
-    if (bsrc == NULL) return NULL;
-    bam1_t *bdst = bam_init1();
-    if (bdst == NULL) return NULL;
-    return bam_copy1(bdst, bsrc);
-}
-
-int bam_cigar2qlen(int n_cigar, const uint32_t *cigar)
-{
-    int k, l;
-    for (k = l = 0; k < n_cigar; ++k)
-        if (bam_cigar_type(bam_cigar_op(cigar[k]))&1)
-            l += bam_cigar_oplen(cigar[k]);
-    return l;
-}
-
-int bam_cigar2rlen(int n_cigar, const uint32_t *cigar)
-{
-    int k, l;
-    for (k = l = 0; k < n_cigar; ++k)
-        if (bam_cigar_type(bam_cigar_op(cigar[k]))&2)
-            l += bam_cigar_oplen(cigar[k]);
-    return l;
-}
-
-int32_t bam_endpos(const bam1_t *b)
-{
-    if (!(b->core.flag & BAM_FUNMAP) && b->core.n_cigar > 0)
-        return b->core.pos + bam_cigar2rlen(b->core.n_cigar, bam_get_cigar(b));
-    else
-        return b->core.pos + 1;
 }
 
 static inline int aux_type2size(uint8_t type)

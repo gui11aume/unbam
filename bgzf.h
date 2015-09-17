@@ -34,6 +34,72 @@
 #include <zlib.h>
 #include <sys/types.h>
 
+#ifndef kroundup32
+#define kroundup32(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
+#endif
+
+#ifndef HTS_BGZF_TYPEDEF
+typedef struct BGZF BGZF;
+#define HTS_BGZF_TYPEDEF
+#endif
+
+// REQUIRED_FIELDS
+enum sam_fields {
+    SAM_QNAME = 0x00000001,
+    SAM_FLAG  = 0x00000002,
+    SAM_RNAME = 0x00000004,
+    SAM_POS   = 0x00000008,
+    SAM_MAPQ  = 0x00000010,
+    SAM_CIGAR = 0x00000020,
+    SAM_RNEXT = 0x00000040,
+    SAM_PNEXT = 0x00000080,
+    SAM_TLEN  = 0x00000100,
+    SAM_SEQ   = 0x00000200,
+    SAM_QUAL  = 0x00000400,
+    SAM_AUX   = 0x00000800,
+    SAM_RGAUX = 0x00001000,
+};
+
+
+/**************
+ * Endianness *
+ **************/
+
+static inline int ed_is_big(void)
+{
+    long one= 1;
+    return !(*((char *)(&one)));
+}
+static inline uint16_t ed_swap_2(uint16_t v)
+{
+    return (uint16_t)(((v & 0x00FF00FFU) << 8) | ((v & 0xFF00FF00U) >> 8));
+}
+static inline void *ed_swap_2p(void *x)
+{
+    *(uint16_t*)x = ed_swap_2(*(uint16_t*)x);
+    return x;
+}
+static inline uint32_t ed_swap_4(uint32_t v)
+{
+    v = ((v & 0x0000FFFFU) << 16) | (v >> 16);
+    return ((v & 0x00FF00FFU) << 8) | ((v & 0xFF00FF00U) >> 8);
+}
+static inline void *ed_swap_4p(void *x)
+{
+    *(uint32_t*)x = ed_swap_4(*(uint32_t*)x);
+    return x;
+}
+static inline uint64_t ed_swap_8(uint64_t v)
+{
+    v = ((v & 0x00000000FFFFFFFFLLU) << 32) | (v >> 32);
+    v = ((v & 0x0000FFFF0000FFFFLLU) << 16) | ((v & 0xFFFF0000FFFF0000LLU) >> 16);
+    return ((v & 0x00FF00FF00FF00FFLLU) << 8) | ((v & 0xFF00FF00FF00FF00LLU) >> 8);
+}
+static inline void *ed_swap_8p(void *x)
+{
+    *(uint64_t*)x = ed_swap_8(*(uint64_t*)x);
+    return x;
+}
 #ifdef __cplusplus
 extern "C" {
 #endif
