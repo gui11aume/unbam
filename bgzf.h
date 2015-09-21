@@ -128,7 +128,7 @@ struct BGZF {
     struct hFILE *fp; // actual file handle
     struct bgzf_mtaux_t *mt; // only used for multi-threading
     bgzidx_t *idx;      // BGZF index
-    int idx_build_otf;  // build index on the fly, set by bgzf_index_build_init()
+//    int idx_build_otf;  // build index on the fly, set by bgzf_index_build_init()
     z_stream *gz_stream;// for gzip-compressed files
 };
 #ifndef HTS_BGZF_TYPEDEF

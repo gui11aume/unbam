@@ -49,7 +49,7 @@ int main_samview(int argc, char *argv[])
        if (r >= 0) { 
           if (b->core.tid  >= header->n_targets || b->core.tid  < -1 ||
              b->core.mtid >= header->n_targets || b->core.mtid < -1)
-             return NULL;
+             return 1;
        }
        // Process 'b' here.
        printf("%s\n", (char *) bam_get_seq(b));

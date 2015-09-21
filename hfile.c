@@ -502,21 +502,6 @@ static const struct hFILE_backend mem_backend =
     mem_read, NULL, mem_seek, NULL, mem_close
 };
 
-static hFILE *hopen_mem(const char *data, const char *mode)
-{
-    // TODO Implement write modes, which will require memory allocation
-    if (strchr(mode, 'r') == NULL) { errno = EINVAL; return NULL; }
-
-    hFILE_mem *fp = (hFILE_mem *) hfile_init(sizeof (hFILE_mem), mode, 0);
-    if (fp == NULL) return NULL;
-
-    fp->buffer = data;
-    fp->length = strlen(data);
-    fp->pos = 0;
-    fp->base.backend = &mem_backend;
-    return &fp->base;
-}
-
 
 /******************************
  * hopen() backend dispatcher *
